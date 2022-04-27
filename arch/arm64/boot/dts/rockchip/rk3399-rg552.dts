@@ -1197,7 +1197,8 @@
 
 &usbdrd_dwc3_0 {
 	status = "okay";
-	dr_mode = "host"; // FIXME: make otg work
+	usb-role-switch;
+	dr_mode = "otg";
 };
 
 &usbdrd3_1 {
