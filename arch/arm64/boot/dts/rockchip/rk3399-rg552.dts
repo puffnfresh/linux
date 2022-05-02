@@ -586,7 +586,7 @@
         ddc-i2c-bus = <&i2c3>;
         pinctrl-names = "default";
         pinctrl-0 = <&hdmi_cec>;
-        status = "disabled";
+        status = "okay";
 };
 
 &mipi_dsi {
@@ -611,7 +611,7 @@
 		backlight = <&backlight>;
 		rotation = <270>;
 
-		iovcc-supply = <&vcc_1v8>;
+		iovcc-supply = <&vcc1v8_dvp>;
 		vsp-supply = <&vcc5v5_lcd>;
 		vsn-supply = <&vcc5v5_neg_lcd>;
 
@@ -1197,7 +1197,8 @@
 
 &usbdrd_dwc3_0 {
 	status = "okay";
-	dr_mode = "host"; // FIXME: make otg work
+	usb-role-switch;
+	dr_mode = "otg";
 };
 
 &usbdrd3_1 {
@@ -1217,11 +1218,10 @@
 	status = "okay";
 };
 
-// FIXME: enable
 &vopl {
-	status = "disabled";
+	status = "okay";
 };
 
 &vopl_mmu {
-	status = "disabled";
+	status = "okay";
 };
