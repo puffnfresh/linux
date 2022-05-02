@@ -1,0 +1,7 @@
+# Ragnarok Mainline-ish Kernel, with extra support for Retro Gaming Handhelds
+
+## Device support status:
+| Device            | DTS File Used         | Internal Display | External Display | 3D Acceleration | DMC DVFS | GPU DVFS | CPU DVFS | USB     | USB Gadget | Button Input | Analog Input | WiFi           | BT | eMMC    | SD Cards | Speakers | Headphones | Microphone | Headset Microphone | Fan     | Suspend/Resume |
+|-------------------|-----------------------|------------------|------------------|-----------------|----------|----------|----------|---------|------------|--------------|--------------|----------------|----|---------|----------|----------|------------|------------|--------------------|---------|----------------|
+| Anbernic RG552    | rk3399-rg552.dts      | Working          | Working          | Working         |          | Working  | Working  | Working | Working    | Working      | Working      | Untested       | -  | Working | Working  | Broken   | Broken     | Broken     | Broken             | Working | Working        |
+| Odroid Go Advance | rk3326-odroid-go2.dts | Working          | -                | Working         |          | Working  | Working  | Working |            | Working      |              | Not applicable | -  | -       | Working  | Working  | Working    | -          | Untested           | -       | Working        |
