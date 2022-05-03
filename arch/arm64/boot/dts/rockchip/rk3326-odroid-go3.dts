@@ -402,7 +402,7 @@
 		vcc6-supply = <&vccsys>;
 		vcc7-supply = <&vccsys>;
 
-		rk817_battery: battery {
+		rk817_charger: charger {
 			monitored-battery = <&battery_cell>;
 			rockchip,resistor-sense-micro-ohms = <10000>;
 			rockchip,sleep-enter-current-microamp = <300000>;
