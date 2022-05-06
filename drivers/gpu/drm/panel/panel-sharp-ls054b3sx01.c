@@ -243,8 +243,8 @@ static const struct drm_display_mode sharp_ls054_mode = {
 	.vsync_start	= 1920 + 56,
 	.vsync_end	= 1920 + 56 + 3,
 	.vtotal		= 1920 + 56 + 3 + 6,
-	.width_mm	= 75,
-	.height_mm	= 132,
+	.width_mm	= 70,
+	.height_mm	= 117,
 };
 
 static int sharp_ls054_get_modes(struct drm_panel *panel,
