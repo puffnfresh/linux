@@ -504,11 +504,11 @@ static int sy7636_probe(struct i2c_client *client,
 	if (ret)
 		goto err1;
 
+	sy7636->pdata = pdata;
+
 	mfd_add_devices(sy7636->dev, -1, sy7636_devs,
 			ARRAY_SIZE(sy7636_devs),
 			NULL, 0, NULL);
-
-	sy7636->pdata = pdata;
 
 	dev_info(&client->dev, "PMIC SY7636 for eInk display\n");
 
