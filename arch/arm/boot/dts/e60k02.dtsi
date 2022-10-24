@@ -33,7 +33,7 @@
 			wakeup-source;
 		};
 
-		cover {
+		cover: cover {
 			label = "Cover";
 			gpios = <&gpio5 12 GPIO_ACTIVE_LOW>;
 			linux,code = <SW_LID>;
@@ -67,7 +67,7 @@
 	};
 
 	thermal-zones {
-		epd-thermal {
+		epd_thermal: epd-thermal {
 			polling-delay = <10000>;
 			polling-delay-passive = <10000>;
 			thermal-sensors = <&tps6518x>;

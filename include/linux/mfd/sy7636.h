@@ -44,7 +44,7 @@ enum {
     SY7636_REG_NUM,
 };
 
-#define SY7636_MAX_REGISTER   0xFF
+#define SY7636_MAX_REG   0xFF
 
 /*
  * Bitfield macros that use rely on bitfield width/shift information.
@@ -151,6 +151,7 @@ struct sy7636 {
 	/* chip revision */
 	struct device *dev;
 	struct sy7636_platform_data *pdata;
+	struct regmap *regmap;
 
 	/* Platform connection */
 	struct i2c_client *i2c_client;
@@ -218,7 +219,7 @@ enum {
     SY7636_DISPLAY, /* virtual master enable */
     SY7636_VCOM,
     SY7636_TMST,
-		SY7636_VP3V3,
+	SY7636_VP3V3,
     SY7636_NUM_REGULATORS,
 };
 

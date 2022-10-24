@@ -41,6 +41,7 @@
 #include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
+#include <linux/regmap.h>
 
 #include <linux/platform_device.h>
 #include <linux/regulator/machine.h>
@@ -58,6 +59,11 @@
 
 static int sy7636_detect(struct i2c_client *client, struct i2c_board_info *info);
 static struct regulator *gpio_regulator;
+static const struct regmap_config sy7636_regmap_config = {
+	.reg_bits	= 8,
+	.val_bits	= 8,
+	.max_register	= SY7636_MAX_REG,
+};
 
 static struct mfd_cell sy7636_devs[] = {
 	{ .name = "sy7636-pmic", },
@@ -474,6 +480,7 @@ static int sy7636_probe(struct i2c_client *client,
 	sy7636->dev = &client->dev;
 	sy7636->i2c_client = client;
 
+	sy7636->regmap = devm_regmap_init_i2c(client, &sy7636_regmap_config);
 
 	if (sy7636->dev->of_node) {
 		pdata = sy7636_i2c_parse_dt_pdata(sy7636->dev);

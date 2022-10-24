@@ -38,42 +38,10 @@
 #include <linux/err.h>
 #include <linux/sysfs.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 #include <linux/mfd/sy7636.h>
 
 #include <linux/gpio.h>
-
-/*
- * Conversions
- */
-static int temp_from_reg(int val)
-{
-	return val;
-}
-
-/*
- * Functions declaration
- */
-static int sy7636_sensor_probe(struct platform_device *pdev);
-static int sy7636_sensor_remove(struct platform_device *pdev);
-
-static const struct platform_device_id sy7636_sns_id[] = {
-	{ "sy7636-sns", 0},
-	{ /* sentinel */ },
-};
-MODULE_DEVICE_TABLE(platform, sy7636_sns_id);
-
-/*
- * Driver data (common to all clients)
- */
-static struct platform_driver sy7636_sensor_driver = {
-	.probe = sy7636_sensor_probe,
-	.remove = sy7636_sensor_remove,
-	.id_table = sy7636_sns_id,
-	.driver = {
-		.name = "sy7636_sensor",
-	},
-};
-
 
 /*
  * Client data (each client gets its own)
@@ -104,7 +72,7 @@ int sy7636_get_temperature(struct sy7636 *sy7636,int *O_piTemperature)
 		printk(KERN_ERR"%s(),SY7636 temperature read error !!\n",__FUNCTION__);
 		return -1;
 	}
-	iTemp = temp_from_reg(reg_val);
+	iTemp = reg_val;
 
 	if(O_piTemperature) {
 		printk("%s():temperature = %d,reg=0x%x\n",__FUNCTION__,iTemp,reg_val);
@@ -115,31 +83,11 @@ int sy7636_get_temperature(struct sy7636 *sy7636,int *O_piTemperature)
 }
 EXPORT_SYMBOL(sy7636_get_temperature);
 
-
-/*
- * Sysfs stuff
- */
-static ssize_t show_temp_input(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct sy7636_data *data = dev_get_drvdata(dev);
-	int iTemp ;
-
-	if(0==sy7636_get_temperature(data->sy7636,&iTemp)) {
-		return snprintf(buf, PAGE_SIZE, "%d\n", iTemp);
-	}
-	else {
-		return snprintf(buf, PAGE_SIZE, "?\n");
-	}
-}
-
-
-
 int sy7636_set_vcom(struct sy7636 *sy7636,int iVCOMmV,int iIsWriteToFlash)
 {
 	//long vcom_reg_val ;
 	int iRet = 0;
-	unsigned int regINT_EN1=0,regVCOM1=0, regVCOM2=0, regINT1=0;
+	unsigned int regVCOM1=0, regVCOM2=0;
 	unsigned short wVCOM_val ;
 	int iChk;
 	//printk("%s(%d);\n",__FUNCTION__,__LINE__);
@@ -156,7 +104,7 @@ int sy7636_set_vcom(struct sy7636 *sy7636,int iVCOMmV,int iIsWriteToFlash)
 
 
 	wVCOM_val = (unsigned short)((iVCOMmV)/10);
-	dev_dbg(sy7636->dev, "vcom=>%dmV,wVCOM_val=0x%x\n",
+	dev_info(sy7636->dev, "vcom=>%dmV,wVCOM_val=0x%x\n",
 			iVCOMmV,wVCOM_val);
 
 	/*
@@ -195,7 +143,7 @@ int sy7636_set_vcom(struct sy7636 *sy7636,int iVCOMmV,int iIsWriteToFlash)
 			iRet = -5;
 		}
 
-		dev_dbg(sy7636->dev, "write regVCOM1=0x%x,regVCOM2=0x%x\n",regVCOM1,regVCOM2);
+		dev_info(sy7636->dev, "write regVCOM1=0x%x,regVCOM2=0x%x\n",regVCOM1,regVCOM2);
 
 		if(iRet>=0) {
 			sy7636->vcom_uV = iVCOMmV*1000;
@@ -261,7 +209,7 @@ int sy7636_get_vcom(struct sy7636 *sy7636,int *O_piVCOMmV)
 	else {
 		wTemp &= ~0x100;
 	}
-	iVCOMmV = (wTemp*10);
+	iVCOMmV = -(wTemp*10);
 
 	if(O_piVCOMmV) {
 		*O_piVCOMmV = iVCOMmV;
@@ -272,98 +220,95 @@ int sy7636_get_vcom(struct sy7636 *sy7636,int *O_piVCOMmV)
 }
 EXPORT_SYMBOL(sy7636_get_vcom);
 
-static ssize_t show_vcom(struct device *dev,
-	struct device_attribute *attr, char *buf)
+static int sy7636_read(struct device *dev, enum hwmon_sensor_types type,
+                         u32 attr, int channel, long *temp)
 {
-	struct sy7636_data *data = dev_get_drvdata(dev);
-	int iVCOM_mV;
+	struct regmap *regmap = dev_get_drvdata(dev);
+	int ret, reg_val;
 
-	sy7636_get_vcom(data->sy7636,&iVCOM_mV);
-	return snprintf(buf, PAGE_SIZE, "%dmV\n",iVCOM_mV);
+	if (attr != hwmon_temp_input)
+		return -EOPNOTSUPP;
+
+	ret = regmap_read(regmap, REG_SY7636_THERM, &reg_val);
+
+	if (ret)
+		return ret;
+
+	*temp = reg_val;
+
+	return 0;
 }
 
-static ssize_t set_vcom(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
+static umode_t sy7636_is_visible(const void *data,
+                                   enum hwmon_sensor_types type,
+                                   u32 attr, int channel)
 {
-	unsigned int reg_val;
-	long vcom_reg_val = simple_strtol(buf,NULL,10);
-	struct sy7636_data *data = dev_get_drvdata(dev);
+	if (type != hwmon_temp)
+		return 0;
 
-	sy7636_set_vcom(data->sy7636,vcom_reg_val,0);
-	return count;
+	if (attr != hwmon_temp_input)
+		return 0;
+
+	return 0444;
 }
 
+static const struct hwmon_ops sy7636_hwmon_ops = {
+	.is_visible = sy7636_is_visible,
+	.read = sy7636_read,
+};
 
-static DEVICE_ATTR(temp_input, S_IRUGO, show_temp_input, NULL);
-static DEVICE_ATTR(vcom_value, S_IWUSR | S_IRUGO, show_vcom, set_vcom);
-
-static struct attribute *sy7636_attributes[] = {
-	&dev_attr_temp_input.attr,
-//	&dev_attr_intr_input.attr,
-	&dev_attr_vcom_value.attr,
+static const struct hwmon_channel_info *sy7636_info[] = {
+	HWMON_CHANNEL_INFO(chip, HWMON_C_REGISTER_TZ),
+	HWMON_CHANNEL_INFO(temp, HWMON_T_INPUT),
 	NULL
 };
 
-static const struct attribute_group sy7636_group = {
-	.attrs = sy7636_attributes,
+static const struct hwmon_chip_info sy7636_chip_info = {
+	.ops = &sy7636_hwmon_ops,
+	.info = sy7636_info,
 };
 
-/*
- * Real code
- */
 static int sy7636_sensor_probe(struct platform_device *pdev)
 {
-	struct sy7636_data *data;
+	struct regmap *regmap = dev_get_regmap(pdev->dev.parent, NULL);
+	struct device *hwmon_dev;
 	int err;
 
-	printk("sy7636_sensor_probe starting\n");
+	if (!regmap)
+			return -EPROBE_DEFER;
 
+	pdev->dev.of_node = pdev->dev.parent->of_node;
+	hwmon_dev = devm_hwmon_device_register_with_info(&pdev->dev,
+														"sy7636_temperature", regmap,
+														&sy7636_chip_info, NULL);
 
-
-
-	data = kzalloc(sizeof(struct sy7636_data), GFP_KERNEL);
-	if (!data) {
-		err = -ENOMEM;
-		goto exit;
-	}
-	data->sy7636 = dev_get_drvdata(pdev->dev.parent);
-	/* Register sysfs hooks */
-	err = sysfs_create_group(&pdev->dev.kobj, &sy7636_group);
-	if (err)
-		goto exit_free;
-
-	data->hwmon_dev = hwmon_device_register(&pdev->dev);
-	if (IS_ERR(data->hwmon_dev)) {
-		err = PTR_ERR(data->hwmon_dev);
-		goto exit_remove_files;
+	if (IS_ERR(hwmon_dev)) {
+			err = PTR_ERR(hwmon_dev);
+			dev_err(&pdev->dev, "Unable to register hwmon device, returned %d\n", err);
+			return err;
 	}
 
-	platform_set_drvdata(pdev, data);
-
-	printk("sy7636_sensor_probe success\n");
-	return 0;
-
-exit_remove_files:
-	sysfs_remove_group(&pdev->dev.kobj, &sy7636_group);
-exit_free:
-	kfree(data);
-exit:
-	return err;
-}
-
-static int sy7636_sensor_remove(struct platform_device *pdev)
-{
-	struct sy7636_data *data = platform_get_drvdata(pdev);
-
-	hwmon_device_unregister(data->hwmon_dev);
-	sysfs_remove_group(&pdev->dev.kobj, &sy7636_group);
-
-	kfree(data);
 	return 0;
 }
+
+static const struct platform_device_id sy7636_sns_id[] = {
+	{ "sy7636-sns", 0},
+	{ /* sentinel */ },
+};
+MODULE_DEVICE_TABLE(platform, sy7636_sns_id);
+
+/*
+ * Driver data (common to all clients)
+ */
+static struct platform_driver sy7636_sensor_driver = {
+	.probe = sy7636_sensor_probe,
+	.id_table = sy7636_sns_id,
+	.driver = {
+		.name = "sy7636_sensor",
+	},
+};
 
 module_platform_driver(sy7636_sensor_driver);
 
 MODULE_DESCRIPTION("SY7636 sensor driver");
 MODULE_LICENSE("GPL");
-
