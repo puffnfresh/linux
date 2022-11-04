@@ -151,7 +151,7 @@
 	clock-frequency = <100000>;
 	status = "okay";
 
-	cyttsp5_ts@24 {
+	cyttsp5_ts: cyttsp5_ts@24 {
 		compatible = "cy,cyttsp5_i2c_adapter";
 		reg = <0x24>;
 		pinctrl-names = "default","sleep";

@@ -42,8 +42,8 @@
 	pinctrl-0 = <&pinctrl_epdc0>;
 
 	DISPLAY-supply = <&DISPLAY_SY7636_reg>;
-	VCOM-supply = <&VCOM_SY7636_reg>;      
-	V3P3-supply = <&V3P3_SY7636_reg>;   
+	VCOM-supply = <&VCOM_SY7636_reg>;
+	V3P3-supply = <&V3P3_SY7636_reg>;
 };
 
 &epd_thermal {
@@ -113,20 +113,33 @@
 	};
 
 	aw99703-bl@36 {
-			reg = <0x36>;
-			aw99703,bl-channel = <1>;
-			aw99703,bl-fscal-led = <0>;
-			aw99703,bl-map = <3>;
-			aw99703,hwen-gpio = <&gpio2 10 0>;
-			aw99703,i2c-trans-dim = <7>;
-			aw99703,label = "FL2";
-			aw99703,pwm-mode = <0>;
-			aw99703,pwm-trans-dim = <0>;
-			aw99703,pwron = <&gpio5 13 0>;
-			aw99703,turn-off-ramp = <0>;
-			aw99703,turn-on-ramp = <0>;
-			aw99703,using-lsb;
-			compatible = "awinic,aw99703-bl";
+		reg = <0x36>;
+		aw99703,bl-channel = <1>;
+		aw99703,bl-fscal-led = <0>;
+		aw99703,bl-map = <3>;
+		aw99703,hwen-gpio = <&gpio2 10 0>;
+		aw99703,i2c-trans-dim = <7>;
+		aw99703,label = "FL2";
+		aw99703,pwm-mode = <0>;
+		aw99703,pwm-trans-dim = <0>;
+		aw99703,pwron = <&gpio5 13 0>;
+		aw99703,turn-off-ramp = <0>;
+		aw99703,turn-on-ramp = <0>;
+		aw99703,using-lsb;
+		compatible = "awinic,aw99703-bl";
+	};
+
+	focaltech@38 {
+		compatible = "focaltech,fts5422";
+		pinctrl-names = "default", "suspend";
+		pinctrl-0 = <&pinctrl_elan_ts_gpio>;
+		pinctrl-1 = <&pinctrl_elan_ts_gpio_sleep>;
+		reg = <0x38>;
+		focaltech,irq-gpio = <&gpio4 24 GPIO_ACTIVE_HIGH>;
+		focaltech,reset-gpio = <&gpio4 18 GPIO_ACTIVE_HIGH>;
+		touchscreen-size-x = <1448>;
+		touchscreen-size-y = <1072>;
+		focaltech,max-touch-number = <10>;
 	};
 };
 
@@ -353,6 +366,20 @@
 	       >;
 	};
 
+	pinctrl_elan_ts_gpio: elan_ts_gpio_grp {
+		fsl,pins = <
+			MX6SLL_PAD_GPIO4_IO24__GPIO4_IO24	0x17059 /* TP_INT */
+			MX6SLL_PAD_GPIO4_IO18__GPIO4_IO18	0x10059 /* TP_RST */
+		>;
+	};
+
+	pinctrl_elan_ts_gpio_sleep: elan_ts_gpio_grp_sleep {
+		fsl,pins = <
+			MX6SLL_PAD_GPIO4_IO24__GPIO4_IO24	0x10059 /* TP_INT */
+			MX6SLL_PAD_GPIO4_IO18__GPIO4_IO18	0x10059 /* TP_RST */
+		>;
+	};
+
 	pinctrl_gpio_keys: gpio-keysgrp {
 		fsl,pins = <
 			MX6SLL_PAD_GPIO4_IO25__GPIO4_IO25	0x17059	/* PWR_SW */
@@ -452,6 +479,15 @@
 			MX6SLL_PAD_LCD_HSYNC__UART2_DCE_TX	0x41b0b1
 			MX6SLL_PAD_LCD_VSYNC__UART2_DCE_RTS	0x41b0b1
 			MX6SLL_PAD_LCD_RESET__UART2_DCE_CTS	0x41b0b1
+		>;
+	};
+
+	pinctrl_uart2_sleep: uart2grp-sleep {
+		fsl,pins = <
+			MX6SLL_PAD_LCD_ENABLE__GPIO2_IO16	0x10059
+			MX6SLL_PAD_LCD_HSYNC__GPIO2_IO17	0x10059
+			MX6SLL_PAD_LCD_VSYNC__GPIO2_IO18	0x10059
+			MX6SLL_PAD_LCD_RESET__GPIO2_IO19	0x10059
 		>;
 	};
 
@@ -629,13 +665,11 @@
 };
 
 &uart2 {
-	pinctrl-names = "default";
+	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&pinctrl_uart2>;
-	status = "okay";
+	pinctrl-1 = <&pinctrl_uart2_sleep>;
 
-	bluetooth {
-		compatible = "mrvl,88w8897";
-	};
+	status = "okay";
 };
 
 &uart4 {
@@ -670,6 +704,10 @@
 
 &cover {
 	gpios = <&gpio4 23 GPIO_ACTIVE_LOW>;
+};
+
+&cyttsp5_ts {
+	status = "disabled";
 };
 
 // UART2 is enabled

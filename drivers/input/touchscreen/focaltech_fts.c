@@ -109,6 +109,7 @@
 
 #define I2C_RETRY_NUMBER 3
 
+#define CHIP_TYPE_5422 0x5422
 #define CHIP_TYPE_5452 0x5452
 #define CHIP_TYPE_8719 0x8719
 
@@ -148,8 +149,8 @@ struct fts_ts_data {
 	struct pinctrl *pinctrl;
 
 	// DT data
-	struct gpio_desc *irq_gpio;
-	struct gpio_desc *reset_gpio;
+	u32 irq_gpio;
+	u32 reset_gpio;
 	u32 width;
 	u32 height;
 };
@@ -193,7 +194,7 @@ int fts_i2c_read_reg(struct i2c_client *client, u8 regaddr, u8 *regvalue)
 
 static bool fts_chip_is_valid(struct fts_ts_data *data, u16 id)
 {
-	if (id != CHIP_TYPE_5452 && id != CHIP_TYPE_8719)
+	if (id != CHIP_TYPE_5422 && id != CHIP_TYPE_5452 && id != CHIP_TYPE_8719)
 		return false;
 
 	return true;
@@ -596,9 +597,9 @@ err_out:
 
 static int fts_reset(struct fts_ts_data *data)
 {
-	gpiod_set_value_cansleep(data->reset_gpio, 0);
+	gpio_set_value_cansleep(data->reset_gpio, 0);
 	msleep(20);
-	gpiod_set_value_cansleep(data->reset_gpio, 1);
+	gpio_set_value_cansleep(data->reset_gpio, 1);
 
 	return 0;
 }
@@ -634,13 +635,13 @@ static int fts_parse_dt(struct fts_ts_data *data)
 	}
 	data->max_touch_number = val;
 
-	data->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
+	data->reset_gpio = of_get_named_gpio_flags(np, "focaltech,reset-gpio", 0, NULL);
 	if (data->reset_gpio < 0) {
 		dev_err(&data->client->dev, "Unable to get reset gpio");
 		return -EINVAL;
 	}
 
-	data->irq_gpio = devm_gpiod_get_optional(dev, "irq", GPIOD_OUT_LOW);
+	data->irq_gpio = of_get_named_gpio_flags(np, "focaltech,irq-gpio", 0, NULL);
 
 	return 0;
 }
@@ -719,10 +720,10 @@ static int fts_ts_probe(struct i2c_client *client,
 	}
 
 	if (data->irq_gpio) {
-		data->irq = gpiod_to_irq(data->irq_gpio);
+		data->irq = gpio_to_irq(data->irq_gpio);
 
 		ret = request_threaded_irq(data->irq, NULL, fts_ts_interrupt,
-					IRQF_ONESHOT,
+					IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
 					data->client->name, data);
 		if (ret < 0) {
 			dev_err(&data->client->dev, "request irq failed");
@@ -847,6 +848,7 @@ static const struct dev_pm_ops fts_dev_pm_ops = {
 };
 
 static const struct of_device_id fts_match_table[] = {
+	{ .compatible = "focaltech,fts5422", },
 	{ .compatible = "focaltech,fts5452", },
 	{ .compatible = "focaltech,fts8719", },
 	{ /* sentinel */ },
