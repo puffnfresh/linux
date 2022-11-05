@@ -218,6 +218,8 @@ struct aw99703_data {
     int brightness;
 	bool enable;
 	int hwen_gpio;
+	int pwron;
+	const char *label;
 	unsigned int pwm_mode;
 	unsigned int maptype;
 	unsigned int full_scale_led;

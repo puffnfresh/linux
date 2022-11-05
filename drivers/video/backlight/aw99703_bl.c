@@ -127,6 +127,22 @@ static int aw99703_gpio_init(struct aw99703_data *drvdata)
 		pr_info("gpio is valid!\n");
 	}
 
+	if (gpio_is_valid(drvdata->pwron)) {
+		ret = gpio_request(drvdata->pwron, "pwron");
+		if (ret < 0) {
+			pr_err("failed to request gpio\n");
+			return -1;
+		}
+		ret = gpio_direction_output(drvdata->pwron, 1);
+		pr_info(" request gpio init\n");
+		if (ret < 0) {
+			pr_err("failed to set output");
+			gpio_free(drvdata->pwron);
+			return ret;
+		}
+		pr_info("gpio is valid!\n");
+	}
+
 	return 0;
 }
 
@@ -498,6 +514,9 @@ aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
 	drvdata->hwen_gpio = of_get_named_gpio(np, "aw99703,hwen-gpio", 0);
 	pr_info("%s drvdata->hwen_gpio --<%d>\n", __func__, drvdata->hwen_gpio);
 
+	drvdata->pwron = of_get_named_gpio(np, "aw99703,pwron", 0);
+	pr_info("%s drvdata->pwron --<%d>\n", __func__, drvdata->pwron);
+
 	rc = of_property_read_u32(np, "aw99703,pwm-mode", &drvdata->pwm_mode);
 	if (rc) {
 		drvdata->pwm_mode = 0;
@@ -700,6 +719,8 @@ aw99703_get_dt_data(struct device *dev, struct aw99703_data *drvdata)
 	} else {
 		pr_info("%s bstcrt5=0x%x\n", __func__, drvdata->bstcrt5);
 	}
+
+	of_property_read_string(np, "aw99703,label", &drvdata->label);
 }
 
 /******************************************************
@@ -755,6 +776,7 @@ static struct attribute_group aw99703_attribute_group = {
 static int aw99703_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
+	char name[40];
 	struct aw99703_data *drvdata;
 	struct backlight_device *bl_dev;
 	struct backlight_properties props;
@@ -801,7 +823,12 @@ static int aw99703_probe(struct i2c_client *client,
 	props.type = BACKLIGHT_RAW;
 	props.brightness = MAX_BRIGHTNESS;
 	props.max_brightness = MAX_BRIGHTNESS;
-	bl_dev = backlight_device_register(AW99703_NAME, &client->dev,
+	if (drvdata->label) {
+		sprintf(name, "%s_%s", AW99703_NAME, drvdata->label);
+	} else {
+		strncpy(name, AW99703_NAME, 40);
+	}
+	bl_dev = backlight_device_register(name, &client->dev,
 					drvdata, &aw99703_bl_ops, &props);
 	if (err) {
 		pr_err("%s : register backlight device failed\n", __func__);
