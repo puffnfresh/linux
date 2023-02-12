@@ -93,6 +93,25 @@ static struct resource bd71815_power_irqs[] = {
 	DEFINE_RES_IRQ_NAMED(BD71815_INT_TEMP_BAT_HI_DET, "bd71815-bat-hi-det"),
 };
 
+static struct resource bd71828_power_irqs[] = {
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_DCIN_DET, "bd71828-pwr-dcin-in"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_DCIN_RMV, "bd71828-pwr-dcin-out"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_BAT_MON_RES, "bd71828-vbat-mon-res"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_BAT_MON_DET, "bd71828-vbat-mon-det"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_BAT_HI_DET, "bd71828-btemp-hi"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_BAT_HI_RES, "bd71828-btemp-cool"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_BAT_LOW_DET, "bd71828-btemp-lo"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_BAT_LOW_RES, "bd71828-btemp-warm"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_CHIP_OVER_VF_DET, "bd71828-temp-hi"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_CHIP_OVER_VF_RES, "bd71828-temp-norm"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_CHIP_OVER_125_DET, "bd71828-temp-125-over"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_TEMP_CHIP_OVER_125_RES, "bd71828-temp-125-under"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_CHG_TOPOFF_TO_DONE, "bd71828-charger-done"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_CHG_RECHARGE_RES, "bd71828-rechg-res"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_CHG_RECHARGE_DET, "bd71828-rechg-det"),
+	DEFINE_RES_IRQ_NAMED(BD71828_INT_CHG_WDG_TIME, "bd71828-charger-wdg-expired"),
+};
+
 static struct mfd_cell bd71815_mfd_cells[] = {
 	{ .name = "bd71815-pmic", },
 	{ .name = "bd71815-clk", },
@@ -118,7 +137,11 @@ static struct mfd_cell bd71828_mfd_cells[] = {
 	 * BD70528 clock gate are the register address and mask.
 	 */
 	{ .name = "bd71828-clk", },
-	{ .name = "bd71827-power", },
+	{
+		.name = "bd71828-power",
+		.resources = bd71828_power_irqs,
+		.num_resources = ARRAY_SIZE(bd71828_power_irqs),
+	},
 	{
 		.name = "bd71828-rtc",
 		.resources = bd71828_rtc_irqs,
@@ -468,9 +491,9 @@ static int set_clk_mode(struct device *dev, struct regmap *regmap,
 
 static int bd71828_i2c_probe(struct i2c_client *i2c)
 {
+	struct rohm_regmap_dev *chip;
 	struct regmap_irq_chip_data *irq_data;
 	int ret;
-	struct regmap *regmap;
 	const struct regmap_config *regmap_config;
 	struct regmap_irq_chip *irqchip;
 	unsigned int chip_type;
@@ -483,6 +506,10 @@ static int bd71828_i2c_probe(struct i2c_client *i2c)
 		dev_err(&i2c->dev, "No IRQ configured\n");
 		return -EINVAL;
 	}
+
+	chip = devm_kzalloc(&i2c->dev, sizeof(*chip), GFP_KERNEL);
+	if (!chip)
+		return -ENOMEM;
 
 	chip_type = (unsigned int)(uintptr_t)
 		    of_device_get_match_data(&i2c->dev);
@@ -514,13 +541,15 @@ static int bd71828_i2c_probe(struct i2c_client *i2c)
 		return -EINVAL;
 	}
 
-	regmap = devm_regmap_init_i2c(i2c, regmap_config);
-	if (IS_ERR(regmap)) {
+	dev_set_drvdata(&i2c->dev, chip);
+
+	chip->regmap = devm_regmap_init_i2c(i2c, regmap_config);
+	if (IS_ERR(chip->regmap)) {
 		dev_err(&i2c->dev, "Failed to initialize Regmap\n");
-		return PTR_ERR(regmap);
+		return PTR_ERR(chip->regmap);
 	}
 
-	ret = devm_regmap_add_irq_chip(&i2c->dev, regmap, i2c->irq,
+	ret = devm_regmap_add_irq_chip(&i2c->dev, chip->regmap, i2c->irq,
 				       IRQF_ONESHOT, 0, irqchip, &irq_data);
 	if (ret) {
 		dev_err(&i2c->dev, "Failed to add IRQ chip\n");
@@ -540,7 +569,7 @@ static int bd71828_i2c_probe(struct i2c_client *i2c)
 		button.irq = ret;
 	}
 
-	ret = set_clk_mode(&i2c->dev, regmap, clkmode_reg);
+	ret = set_clk_mode(&i2c->dev, chip->regmap, clkmode_reg);
 	if (ret)
 		return ret;
 

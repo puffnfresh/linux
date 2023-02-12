@@ -897,4 +897,13 @@ config BATTERY_UG3105
 	  device is off or suspended, the functionality of this driver is
 	  limited to reporting capacity only.
 
+config POWER_BD71828
+	tristate "Power-supply driver for ROHM BD71828 PMIC"
+	depends on MFD_ROHM_BD71828
+	help
+	  Say Y here to enable support for charger, battery and fuel gauge
+	  in ROHM BD71827 and ROHM BD71828 power management ICs. This driver
+	  gets various bits of information about battery and charger states
+	  and also implements fuel gauge based on coulomb counters on PMIC.
+
 endif # POWER_SUPPLY
